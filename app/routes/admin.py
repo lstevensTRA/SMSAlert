@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 import pyodbc
 import os
 from config import Config
-from app.models import Settings
+from app.models import Settings, User, Keyword
 from app import db
 import json
 
@@ -83,4 +83,23 @@ def toggle_user(user_id):
     cursor = sql_conn.cursor()
     cursor.execute("UPDATE Users SET IsActive = 1 - IsActive WHERE UserID = ?", user_id)
     sql_conn.commit()
-    return redirect(url_for('admin.admin_panel')) 
+    return redirect(url_for('admin.admin_panel'))
+
+@admin_bp.route('/health')
+def health():
+    try:
+        # Test User CRUD
+        user_count = User.query.count()
+        # Test Keyword CRUD
+        keyword_count = Keyword.query.count()
+        # Test Settings CRUD
+        settings = Settings.query.first()
+        settings_ok = bool(settings)
+        return {
+            'status': 'ok',
+            'user_count': user_count,
+            'keyword_count': keyword_count,
+            'settings_ok': settings_ok
+        }, 200
+    except Exception as e:
+        return {'status': 'error', 'error': str(e)}, 500 
