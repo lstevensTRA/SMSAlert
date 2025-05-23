@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keyword Manager</title>
+    <link href="/static/tailwind.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto py-8">
+        <h1 class="text-2xl font-bold mb-6">Keyword Manager</h1>
+        <form method="POST" class="flex space-x-2 mb-6">
+            <input name="text" placeholder="Keyword" class="border rounded px-2 py-1" required>
+            <select name="match_type" class="border rounded px-2 py-1">
+                <option value="exact">Exact</option>
+                <option value="fuzzy">Fuzzy</option>
+            </select>
+            <select name="severity" class="border rounded px-2 py-1">
+                <option>Low</option>
+                <option>Moderate</option>
+                <option>High</option>
+            </select>
+            <input name="routing_tag" placeholder="Routing Tag" class="border rounded px-2 py-1">
+            <button class="bg-blue-600 text-white px-4 py-1 rounded">Add</button>
+        </form>
+        <table class="min-w-full bg-white rounded shadow">
+            <thead>
+                <tr>
+                    <th class="py-2 px-4 border-b">Keyword</th>
+                    <th class="py-2 px-4 border-b">Match Type</th>
+                    <th class="py-2 px-4 border-b">Severity</th>
+                    <th class="py-2 px-4 border-b">Routing Tag</th>
+                    <th class="py-2 px-4 border-b">Delete</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for k in keywords %}
+                <tr class="hover:bg-gray-50">
+                    <td class="py-2 px-4 border-b">{{ k.text }}</td>
+                    <td class="py-2 px-4 border-b">{{ k.match_type }}</td>
+                    <td class="py-2 px-4 border-b">{{ k.severity }}</td>
+                    <td class="py-2 px-4 border-b">{{ k.routing_tag }}</td>
+                    <td class="py-2 px-4 border-b">
+                        <a href="{{ url_for('keywords.delete_keyword', id=k.id) }}" class="text-red-600 hover:underline">Delete</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center py-4">No keywords.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html> 

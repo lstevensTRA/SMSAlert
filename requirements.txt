@@ -1,0 +1,11 @@
+Flask
+Flask-Login
+Flask-Mail
+Flask-SQLAlchemy
+pyodbc
+bcrypt
+pandas
+flask-excel
+APScheduler
+python-dotenv
+tailwindcss 

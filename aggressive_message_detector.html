@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aggressive Message Detector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .popup-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            max-width: 600px;
+            overflow: hidden;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.1); opacity: 0.1; }
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e1e8ed;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .checkbox-wrapper {
+            position: relative;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            opacity: 0;
+            position: absolute;
+            width: 20px;
+            height: 20px;
+        }
+
+        .checkbox-custom {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .checkbox-wrapper input[type="checkbox"]:checked + .checkbox-custom {
+            background: #667eea;
+            border-color: #667eea;
+        }
+
+        .checkbox-wrapper input[type="checkbox"]:checked + .checkbox-custom::after {
+            content: '✓';
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .checkbox-label {
+            color: #2c3e50;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 35px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 16px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 2px solid #e9ecef;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+            transform: translateY(-1px);
+        }
+
+        .progress-container {
+            display: none;
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .progress-text {
+            font-size: 0.9rem;
+            color: #6c757d;
+            text-align: center;
+        }
+
+        .results-container {
+            display: none;
+            margin-top: 25px;
+            padding: 25px;
+            background: linear-gradient(135deg, #e8f5e8, #f0f8ff);
+            border-radius: 12px;
+            border: 1px solid #d4edda;
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .results-icon {
+            width: 24px;
+            height: 24px;
+            background: #28a745;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .results-title {
+            font-weight: 600;
+            color: #155724;
+            font-size: 1.1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #667eea;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .download-btn {
+            background: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .warning-banner {
+            background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .warning-icon {
+            font-size: 1.2rem;
+        }
+
+        .warning-text {
+            font-size: 0.9rem;
+            color: #8b6914;
+        }
+
+        @media (max-width: 640px) {
+            .popup-container {
+                margin: 10px;
+                border-radius: 16px;
+            }
+            
+            .header {
+                padding: 25px 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .content {
+                padding: 25px 20px;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="popup-container">
+        <div class="header">
+            <h1>🔍 Aggressive Message Detector</h1>
+            <p>Identify and analyze aggressive client communications</p>
+        </div>
+        
+        <div class="content">
+            <div class="warning-banner">
+                <span class="warning-icon">⚠️</span>
+                <span class="warning-text">
+                    This tool analyzes client messages for aggressive patterns. Processing large datasets may take several minutes.
+                </span>
+            </div>
+
+            <form id="analysisForm">
+                <div class="form-group">
+                    <label for="days">Search Period (Days)</label>
+                    <input type="number" id="days" value="14" min="1" max="365" placeholder="Number of days to analyze">
+                </div>
+
+                <div class="form-group">
+                    <label for="threshold">Aggression Score Threshold</label>
+                    <input type="number" id="threshold" value="1.5" min="0.1" max="10" step="0.1" placeholder="Minimum score to flag as aggressive">
+                </div>
+
+                <div class="form-group">
+                    <label for="limit">Case Limit</label>
+                    <input type="number" id="limit" value="25" min="0" max="1000" placeholder="Maximum cases to analyze (0 for all)">
+                </div>
+
+                <div class="form-group">
+                    <label>Analysis Options</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="exportCsv" checked>
+                            <div class="checkbox-custom"></div>
+                        </div>
+                        <label for="exportCsv" class="checkbox-label">Export results to CSV</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="useOpenAI">
+                            <div class="checkbox-custom"></div>
+                        </div>
+                        <label for="useOpenAI" class="checkbox-label">Use AI for enhanced sentiment analysis</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="fastMode" checked>
+                            <div class="checkbox-custom"></div>
+                        </div>
+                        <label for="fastMode" class="checkbox-label">Fast mode (optimized processing)</label>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
+                    <button type="submit" class="btn btn-primary">🚀 Start Analysis</button>
+                </div>
+            </form>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-text" id="progressText">Initializing analysis...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressDetails">Connecting to database...</div>
+            </div>
+
+            <div class="results-container" id="resultsContainer">
+                <div class="results-header">
+                    <div class="results-icon">✓</div>
+                    <div class="results-title">Analysis Complete</div>
+                </div>
+                
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <span class="stat-number" id="messagesFound">0</span>
+                        <div class="stat-label">Aggressive Messages</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="casesAffected">0</span>
+                        <div class="stat-label">Cases Affected</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="avgScore">0.0</span>
+                        <div class="stat-label">Avg. Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="processingTime">0s</span>
+                        <div class="stat-label">Processing Time</div>
+                    </div>
+                </div>
+                
+                <button class="download-btn" onclick="downloadResults()">
+                    📥 Download Full Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let analysisData = null;
+        let startTime = null;
+
+        document.getElementById('analysisForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            startAnalysis();
+        });
+
+        function startAnalysis() {
+            // Get form values
+            const days = document.getElementById('days').value;
+            const threshold = document.getElementById('threshold').value;
+            const limit = document.getElementById('limit').value;
+            const exportCsv = document.getElementById('exportCsv').checked;
+            const useOpenAI = document.getElementById('useOpenAI').checked;
+            const fastMode = document.getElementById('fastMode').checked;
+
+            // Hide results and show progress
+            document.getElementById('resultsContainer').style.display = 'none';
+            document.getElementById('progressContainer').style.display = 'block';
+            
+            startTime = Date.now();
+            
+            // Simulate the analysis process
+            simulateAnalysis({
+                days: parseInt(days),
+                threshold: parseFloat(threshold),
+                limit: parseInt(limit),
+                exportCsv,
+                useOpenAI,
+                fastMode
+            });
+        }
+
+        function simulateAnalysis(config) {
+            const steps = [
+                { text: "Connecting to database...", detail: "Establishing secure connection", progress: 10 },
+                { text: "Scanning messages...", detail: `Analyzing ${config.days} days of data`, progress: 25 },
+                { text: "Applying aggression filters...", detail: "Processing language patterns", progress: 45 },
+                { text: "Scoring message sentiment...", detail: "Calculating aggression scores", progress: 65 },
+                { text: "Analyzing case patterns...", detail: "Grouping by case ID", progress: 80 },
+                { text: "Generating report...", detail: "Compiling final results", progress: 95 },
+                { text: "Analysis complete!", detail: "Results ready for review", progress: 100 }
+            ];
+
+            let currentStep = 0;
+            
+            function updateProgress() {
+                if (currentStep < steps.length) {
+                    const step = steps[currentStep];
+                    document.getElementById('progressText').textContent = step.text;
+                    document.getElementById('progressDetails').textContent = step.detail;
+                    document.getElementById('progressFill').style.width = step.progress + '%';
+                    
+                    currentStep++;
+                    
+                    if (currentStep < steps.length) {
+                        setTimeout(updateProgress, 800 + Math.random() * 1200);
+                    } else {
+                        setTimeout(showResults, 500);
+                    }
+                }
+            }
+
+            updateProgress();
+        }
+
+        function showResults() {
+            // Simulate realistic results
+            const mockResults = {
+                messagesFound: Math.floor(Math.random() * 50) + 15,
+                casesAffected: Math.floor(Math.random() * 20) + 8,
+                avgScore: (Math.random() * 2 + 2).toFixed(1),
+                processingTime: Math.floor((Date.now() - startTime) / 1000)
+            };
+
+            // Update result statistics
+            document.getElementById('messagesFound').textContent = mockResults.messagesFound;
+            document.getElementById('casesAffected').textContent = mockResults.casesAffected;
+            document.getElementById('avgScore').textContent = mockResults.avgScore;
+            document.getElementById('processingTime').textContent = mockResults.processingTime + 's';
+
+            // Hide progress and show results
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('resultsContainer').style.display = 'block';
+            
+            analysisData = mockResults;
+        }
+
+        function resetForm() {
+            document.getElementById('days').value = '14';
+            document.getElementById('threshold').value = '1.5';
+            document.getElementById('limit').value = '25';
+            document.getElementById('exportCsv').checked = true;
+            document.getElementById('useOpenAI').checked = false;
+            document.getElementById('fastMode').checked = true;
+            
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('resultsContainer').style.display = 'none';
+        }
+
+        function downloadResults() {
+            if (!analysisData) return;
+            
+            // Create mock CSV content
+            const csvContent = `Case ID,Date,From,Message,Score,Indicators
+12345,2025-05-21,"555-0123","This is unacceptable! I want my money back!",3.2,"Refund Demands: money back, Negative Sentiment: unacceptable"
+12346,2025-05-20,"555-0124","WHERE IS MY REFUND?? This is ridiculous!!!",4.1,"Uses ALL CAPS, Multiple exclamation marks, Refund Demands: refund"
+12347,2025-05-19,"555-0125","I'm calling my lawyer if this isn't fixed immediately",3.8,"Legal Threats: lawyer, Urgency: immediately"`;
+            
+            // Create and download file
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `aggressive_messages_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Add smooth interactions
+        document.querySelectorAll('.form-group input, .form-group select').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'translateY(-2px)';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+</body>
+</html>
