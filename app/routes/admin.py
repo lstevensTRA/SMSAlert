@@ -1,8 +1,11 @@
-from flask import Blueprint, render_template, redirect, url_for, request, session
+from flask import Blueprint, render_template, redirect, url_for, request, session, flash
 from flask_login import login_required, current_user
 import pyodbc
 import os
 from config import Config
+from app.models import Settings
+from app import db
+import json
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -36,20 +39,35 @@ def admin_panel():
 def notifications():
     if not current_user.is_authenticated:
         return redirect(url_for('auth.login'))
-    # For demo: store in session, in real app use DB
-    if 'emails' not in session:
-        session['emails'] = []
-    if 'schedule' not in session:
-        session['schedule'] = 'hourly'
+    # Use DB for persistent settings
+    settings = Settings.query.first()
+    if not settings:
+        settings = Settings(alert_recipients=json.dumps([]))
+        db.session.add(settings)
+        db.session.commit()
+    # Parse emails and schedule from DB
+    try:
+        data = json.loads(settings.alert_recipients)
+        if isinstance(data, dict):
+            emails = data.get('emails', [])
+            schedule = data.get('schedule', 'hourly')
+        else:
+            emails = data
+            schedule = 'hourly'
+    except Exception:
+        emails = []
+        schedule = 'hourly'
     if request.method == 'POST':
         email = request.form.get('email')
-        schedule = request.form.get('schedule')
-        if email and email not in session['emails']:
-            session['emails'].append(email)
-        if schedule:
-            session['schedule'] = schedule
-    emails = session.get('emails', [])
-    schedule = session.get('schedule', 'hourly')
+        schedule_form = request.form.get('schedule')
+        if email and email not in emails:
+            emails.append(email)
+        if schedule_form:
+            schedule = schedule_form
+        # Save as JSON
+        settings.alert_recipients = json.dumps({'emails': emails, 'schedule': schedule})
+        db.session.commit()
+        flash('Notification settings updated!', 'success')
     return render_template('notifications.html', emails=emails, schedule=schedule)
 
 @admin_bp.route('/admin/toggle/<int:user_id>')
