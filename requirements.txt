@@ -8,4 +8,5 @@ pandas
 flask-excel
 APScheduler
 python-dotenv
-tailwindcss 
+tailwindcss
+gunicorn 
