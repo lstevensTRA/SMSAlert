@@ -176,6 +176,7 @@
                             <th>Message</th>
                             <th>Score</th>
                             <th>Severity</th>
+                            <th>Follow Up</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -194,6 +195,11 @@
                                 {% else %}
                                     <span class="badge-low">Low</span>
                                 {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge badge-info">{{ msg.follow_up_status or 'No' }}</span>
+                                {% if msg.notes %}<span title="Notes available">��</span>{% endif %}
+                                <a href="/followup/{{ msg.CaseID }}" class="inline-block bg-indigo-600 text-white px-3 py-1 rounded-lg font-semibold shadow hover:bg-indigo-700 transition ml-2">Follow Up</a>
                             </td>
                             <td>
                                 <a href="/conversation/{{ msg.CaseID }}" class="text-blue-600 hover:underline">View</a>

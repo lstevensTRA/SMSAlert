@@ -1,7 +1,9 @@
-from flask import Blueprint, render_template, flash, request, redirect, url_for
+from flask import Blueprint, render_template, flash, request, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 import pyodbc
 import os
+from app.models import FlaggedMessage
+from app import db
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -135,4 +137,25 @@ def conversation(case_id):
     except Exception as e:
         messages = []
         flash(f"Error loading conversation: {str(e)}", "danger")
-    return render_template('conversation.html', messages=messages, case_id=case_id) 
+    return render_template('conversation.html', messages=messages, case_id=case_id)
+
+@dashboard_bp.route('/followup/<case_id>', methods=['GET', 'POST'])
+@login_required
+def followup(case_id):
+    flagged = FlaggedMessage.query.filter_by(followed_up_by=current_user.Email, smslog_id=case_id).first()
+    if request.method == 'POST':
+        status = request.form.get('status')
+        notes = request.form.get('notes')
+        if not flagged:
+            flagged = FlaggedMessage(smslog_id=case_id, follow_up_status=status, notes=notes, followed_up_by=current_user.Email)
+            db.session.add(flagged)
+        else:
+            flagged.follow_up_status = status
+            flagged.notes = notes
+            flagged.followed_up_by = current_user.Email
+        db.session.commit()
+        return redirect(url_for('dashboard.conversation', case_id=case_id))
+    # GET
+    if not flagged:
+        flagged = FlaggedMessage(follow_up_status='No', notes='', followed_up_by='')
+    return render_template('followup.html', flagged=flagged, case_id=case_id) 

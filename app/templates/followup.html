@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conversation: {{ case_id }}</title>
+    <title>Follow Up - {{ case_id }}</title>
     <link href="/static/tailwind.css" rel="stylesheet">
     <style>
         body {
@@ -20,7 +20,7 @@
             border-radius: 24px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
             width: 100%;
-            max-width: 700px;
+            max-width: 500px;
             overflow: hidden;
             margin: 40px auto;
             animation: slideUp 0.6s ease-out;
@@ -41,54 +41,42 @@
             font-weight: 700;
             margin-bottom: 8px;
         }
-        .header .logics-btn {
-            margin-top: 10px;
-            display: inline-block;
+        .content {
+            padding: 32px 32px 24px 32px;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 6px;
+            display: block;
+        }
+        select, textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            font-size: 1rem;
+            background: white;
+            margin-bottom: 18px;
+        }
+        button {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             border: none;
             border-radius: 10px;
             padding: 10px 20px;
             font-weight: 600;
-            text-decoration: none;
+            cursor: pointer;
             transition: background 0.2s;
+            width: 100%;
         }
-        .header .logics-btn:hover {
+        button:hover {
             background: linear-gradient(135deg, #764ba2, #667eea);
         }
-        .content {
-            padding: 32px 32px 24px 32px;
-        }
-        .message-list {
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-        }
-        .message {
-            background: #f6f7fb;
-            border-radius: 14px;
-            padding: 16px 20px;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.08);
-            display: flex;
-            flex-direction: column;
-        }
-        .message .meta {
+        .meta {
             font-size: 0.95em;
             color: #888;
-            margin-bottom: 6px;
-            display: flex;
-            justify-content: space-between;
-        }
-        .message .body {
-            font-size: 1.08em;
-            color: #222;
-            white-space: pre-line;
-        }
-        .from-outbound {
-            background: #e0e7ff;
-        }
-        .from-inbound {
-            background: #fffbe6;
+            margin-bottom: 10px;
+            text-align: right;
         }
     </style>
 </head>
@@ -111,29 +99,24 @@
     <div style="height:64px;"></div>
     <div class="popup-container">
         <div class="header">
-            <h1>Conversation: {{ case_id }}</h1>
-            <a class="logics-btn" href="https://tps.logiqs.com/Cases/Case.aspx?CaseID={{ case_id }}" target="_blank">View on Logics</a>
-            <div style="margin-top:12px;">
-                <span class="badge badge-info">Follow Up: {{ flagged.follow_up_status or 'No' }}</span>
-                {% if flagged.notes %}<span title="Notes">��</span>{% endif %}
-                <a href="/followup/{{ case_id }}" class="inline-block bg-indigo-600 text-white px-3 py-1 rounded-lg font-semibold shadow hover:bg-indigo-700 transition ml-2">Edit Follow Up</a>
-            </div>
-            {% if flagged.notes %}<div style="margin-top:8px;font-size:1rem;color:#333;background:#f6f7fb;padding:8px 14px;border-radius:8px;">Notes: {{ flagged.notes }}</div>{% endif %}
+            <h1>Follow Up: {{ case_id }}</h1>
         </div>
         <div class="content">
-            <div class="message-list">
-                {% for msg in messages %}
-                <div class="message {% if msg.MsgDirection == 'outbound' %}from-outbound{% else %}from-inbound{% endif %}">
-                    <div class="meta">
-                        <span>{{ msg.MsgFrom }}</span>
-                        <span>{{ msg.MsgDateSent }}</span>
-                    </div>
-                    <div class="body">{{ msg.MsgBody }}</div>
-                </div>
-                {% else %}
-                <div class="text-center py-4">No messages found for this case.</div>
-                {% endfor %}
-            </div>
+            <form method="post">
+                <label for="status">Follow Up Status</label>
+                <select id="status" name="status">
+                    <option value="No" {% if flagged.follow_up_status == 'No' %}selected{% endif %}>No</option>
+                    <option value="In Progress" {% if flagged.follow_up_status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                    <option value="Done" {% if flagged.follow_up_status == 'Done' %}selected{% endif %}>Done</option>
+                    <option value="Escalated" {% if flagged.follow_up_status == 'Escalated' %}selected{% endif %}>Escalated</option>
+                </select>
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" rows="4" placeholder="Add notes here...">{{ flagged.notes }}</textarea>
+                <button type="submit">Save</button>
+            </form>
+            {% if flagged.followed_up_by %}
+            <div class="meta">Last updated by {{ flagged.followed_up_by }}</div>
+            {% endif %}
         </div>
     </div>
 </body>
