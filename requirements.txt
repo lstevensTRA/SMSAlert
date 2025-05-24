@@ -9,4 +9,5 @@ flask-excel
 APScheduler
 python-dotenv
 tailwindcss
-gunicorn 
+gunicorn
+requests 
