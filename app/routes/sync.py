@@ -4,6 +4,8 @@ from sqlalchemy import create_engine, text
 from datetime import datetime
 import os
 from config import Config
+from app.models import SupabaseFlaggedMessage
+from app import db
 
 sync_bp = Blueprint('sync', __name__)
 
@@ -24,40 +26,23 @@ def sync_flagged():
     # Define your keywords
     keywords = ['refund', 'cancel', 'lawyer']
 
-    # Connect to Supabase
-    try:
-        supabase_engine = create_engine(Config.SUPABASE_DB_URL)
-    except Exception as e:
-        supabase_engine = None
-        flash(f"Warning: Could not connect to Supabase. {str(e)}", "warning")
-
-    # Flag and insert
+    # Flag and insert into local DB
     for msg in messages:
         for kw in keywords:
             if kw in (msg.MsgBody or '').lower():
-                if supabase_engine:
-                    try:
-                        with supabase_engine.connect() as conn:
-                            conn.execute(
-                                text("""
-                                INSERT INTO flagged_messages (case_id, msg_body, msg_date, direction, from_identity, keyword_hit, score, status, created_at)
-                                VALUES (:case_id, :msg_body, :msg_date, :direction, :from_identity, :keyword_hit, :score, :status, :created_at)
-                                ON CONFLICT (case_id, msg_date) DO NOTHING
-                                """),
-                                {
-                                    'case_id': msg.CaseID,
-                                    'msg_body': msg.MsgBody,
-                                    'msg_date': msg.MsgDateSent,
-                                    'direction': msg.MsgDirection,
-                                    'from_identity': msg.MsgFrom,
-                                    'keyword_hit': kw,
-                                    'score': 100,  # or your scoring logic
-                                    'status': 'flagged',
-                                    'created_at': datetime.utcnow()
-                                }
-                            )
-                    except Exception as e:
-                        flash(f"Warning: Could not insert into Supabase. {str(e)}", "warning")
-                # else: skip insert if supabase_engine is None
+                exists = SupabaseFlaggedMessage.query.filter_by(case_id=msg.CaseID, msg_date=msg.MsgDateSent).first()
+                if not exists:
+                    flagged = SupabaseFlaggedMessage(
+                        case_id=msg.CaseID,
+                        msg_body=msg.MsgBody,
+                        msg_date=msg.MsgDateSent,
+                        direction=msg.MsgDirection,
+                        from_identity=msg.MsgFrom,
+                        keyword_hit=kw,
+                        score=100,
+                        status='flagged'
+                    )
+                    db.session.add(flagged)
+    db.session.commit()
     flash('Sync complete!')
     return redirect(url_for('dashboard.dashboard')) 

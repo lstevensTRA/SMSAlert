@@ -5,7 +5,6 @@ import os
 import bcrypt
 import hashlib
 from flask_mail import Message
-import requests
 
 from .. import login_manager, mail
 
@@ -35,9 +34,6 @@ def load_user(user_id):
     if row and row.IsActive:
         return UserObj(row)
     return None
-
-SUPABASE_URL = 'https://zkoqpjlbxbfamidjftsk.supabase.co'
-SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inprb3FwamxieGJmYW1pZGpmdHNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMzI2MDgsImV4cCI6MjA2MzYwODYwOH0.1HZHnRhI3XTV6WX-td2KprLS712NeQ8A7yiEXInWps0'
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -71,32 +67,6 @@ def login():
         if valid:
             user = UserObj(row)
             login_user(user)
-            # Create user in Supabase if not exists
-            try:
-                headers = {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': f'Bearer {SUPABASE_ANON_KEY}',
-                    'Content-Type': 'application/json',
-                }
-                # Check if user exists
-                resp = requests.get(
-                    f"{SUPABASE_URL}/rest/v1/profiles?email=eq.{email}",
-                    headers=headers
-                )
-                if resp.status_code == 200 and not resp.json():
-                    # Create user profile
-                    data = {
-                        'email': email,
-                        'first_name': row.FirstName,
-                        'last_name': row.LastName
-                    }
-                    requests.post(
-                        f"{SUPABASE_URL}/rest/v1/profiles",
-                        headers=headers,
-                        json=data
-                    )
-            except Exception as e:
-                flash(f"Could not sync user to Supabase: {str(e)}", "warning")
             # Notify super admin if not the super admin
             if email != 'lindsey.stevens@tra.com':
                 try:
