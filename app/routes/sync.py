@@ -6,8 +6,12 @@ import os
 from config import Config
 from app.models import SupabaseFlaggedMessage
 from app import db
+import requests
 
 sync_bp = Blueprint('sync', __name__)
+
+SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://zkoqpjlbxbfamidjftsk.supabase.co')
+SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inprb3FwamxieGJmYW1pZGpmdHNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMzI2MDgsImV4cCI6MjA2MzYwODYwOH0.1HZHnRhI3XTV6WX-td2KprLS712NeQ8A7yiEXInWps0')
 
 @sync_bp.route('/sync')
 def sync_flagged():
@@ -23,26 +27,28 @@ def sync_flagged():
     cursor.execute("SELECT CaseID, MsgBody, MsgDirection, MsgDateSent, MsgFrom FROM SMSLog WHERE MsgDirection='inbound'")
     messages = cursor.fetchall()
 
-    # Define your keywords
     keywords = ['refund', 'cancel', 'lawyer']
-
-    # Flag and insert into local DB
+    headers = {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': f'Bearer {SUPABASE_ANON_KEY}',
+        'Content-Type': 'application/json',
+    }
     for msg in messages:
         for kw in keywords:
             if kw in (msg.MsgBody or '').lower():
-                exists = SupabaseFlaggedMessage.query.filter_by(case_id=msg.CaseID, msg_date=msg.MsgDateSent).first()
-                if not exists:
-                    flagged = SupabaseFlaggedMessage(
-                        case_id=msg.CaseID,
-                        msg_body=msg.MsgBody,
-                        msg_date=msg.MsgDateSent,
-                        direction=msg.MsgDirection,
-                        from_identity=msg.MsgFrom,
-                        keyword_hit=kw,
-                        score=100,
-                        status='flagged'
-                    )
-                    db.session.add(flagged)
-    db.session.commit()
+                data = {
+                    'case_id': msg.CaseID,
+                    'msg_body': msg.MsgBody,
+                    'msg_date': msg.MsgDateSent.isoformat() if hasattr(msg.MsgDateSent, 'isoformat') else str(msg.MsgDateSent),
+                    'direction': msg.MsgDirection,
+                    'from_identity': msg.MsgFrom,
+                    'keyword_hit': kw,
+                    'score': 100,
+                    'status': 'flagged'
+                }
+                try:
+                    requests.post(f"{SUPABASE_URL}/rest/v1/flagged_messages", headers=headers, json=data)
+                except Exception as e:
+                    flash(f"Could not sync to Supabase: {str(e)}", "warning")
     flash('Sync complete!')
     return redirect(url_for('dashboard.dashboard')) 
