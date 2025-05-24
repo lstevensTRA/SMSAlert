@@ -24,14 +24,17 @@ def restrict_to_superadmin():
 @admin_bp.route('/admin')
 @login_required
 def admin_panel():
-    headers = {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': f'Bearer {SUPABASE_ANON_KEY}',
-        'Content-Type': 'application/json',
-    }
-    # Fetch users from Supabase
-    resp = requests.get(f"{SUPABASE_URL}/rest/v1/profiles?order=created_at", headers=headers)
-    users = resp.json() if resp.status_code == 200 else []
+    # Connect to SQL Server for users
+    sql_conn = pyodbc.connect(
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"SERVER={os.getenv('DB_SERVER')};"
+        f"DATABASE={os.getenv('DB_NAME')};"
+        f"UID={os.getenv('DB_USER')};"
+        f"PWD={os.getenv('DB_PASSWORD')}"
+    )
+    cursor = sql_conn.cursor()
+    cursor.execute("SELECT UserID, Email, FirstName, LastName, IsActive FROM Users")
+    users = cursor.fetchall()
     logs = []  # TODO: fetch audit logs if needed
     return render_template('admin_panel.html', users=users, logs=logs)
 
@@ -74,21 +77,19 @@ def notifications():
         flash('Notification settings updated!', 'success')
     return render_template('notifications.html', emails=emails, schedule=schedule)
 
-@admin_bp.route('/admin/toggle/<string:user_id>')
+@admin_bp.route('/admin/toggle/<int:user_id>')
 @login_required
 def toggle_user(user_id):
-    headers = {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': f'Bearer {SUPABASE_ANON_KEY}',
-        'Content-Type': 'application/json',
-    }
-    # Fetch user
-    resp = requests.get(f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{user_id}", headers=headers)
-    user = resp.json()[0] if resp.status_code == 200 and resp.json() else None
-    if user:
-        new_status = not user.get('is_active', True)
-        payload = {'is_active': new_status}
-        requests.patch(f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{user_id}", headers=headers, json=payload)
+    sql_conn = pyodbc.connect(
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"SERVER={os.getenv('DB_SERVER')};"
+        f"DATABASE={os.getenv('DB_NAME')};"
+        f"UID={os.getenv('DB_USER')};"
+        f"PWD={os.getenv('DB_PASSWORD')}"
+    )
+    cursor = sql_conn.cursor()
+    cursor.execute("UPDATE Users SET IsActive = 1 - IsActive WHERE UserID = ?", user_id)
+    sql_conn.commit()
     return redirect(url_for('admin.admin_panel'))
 
 @admin_bp.route('/health')
